@@ -1,0 +1,150 @@
+//@version=5
+indicator("MBQ ALGO X Pro v5", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// =============================================================================
+// MBQ ALGO — PROPRIETARY TRADING INTELLIGENCE SYSTEM
+// Strict Non-Repainting Multi-Condition Trend Engine + Dynamic TP/SL + Trend HUD
+// Copyright (c) 2026 MBQ ALGO. All rights reserved.
+// =============================================================================
+
+// --- 1. USER INPUTS & LICENSING (SOFT GATE) ---
+group_license = "=== MBQ ALGO LICENSING ==="
+license_key   = input.string("", "MBQ License Key (From Dashboard)", group=group_license, tooltip="Paste your signed key from your MBQ ALGO Client Portal.")
+tv_username   = input.string("", "TradingView Username", group=group_license)
+
+group_algo    = "=== ALGORITHM SETTINGS ==="
+sensitivity   = input.float(1.6, "Signal Sensitivity", minval=0.5, maxval=5.0, step=0.1, group=group_algo)
+atr_period    = input.int(14, "ATR Volatility Period", minval=5, maxval=50, group=group_algo)
+use_trend_hud = input.bool(true, "Show Multi-Timeframe Trend Matrix HUD", group=group_algo)
+
+group_tpsl    = "=== DYNAMIC RISK & EXIT LEVELS ==="
+show_tpsl     = input.bool(true, "Draw TP / SL Targets on Chart", group=group_tpsl)
+tp1_mult      = input.float(1.5, "Take Profit 1 (Risk Multiple)", step=0.1, group=group_tpsl)
+tp2_mult      = input.float(2.8, "Take Profit 2 (Risk Multiple)", step=0.1, group=group_tpsl)
+tp3_mult      = input.float(4.5, "Take Profit 3 (Risk Multiple)", step=0.1, group=group_tpsl)
+sl_mult       = input.float(1.5, "Stop Loss (ATR Multiple)", step=0.1, group=group_tpsl)
+
+// --- 2. LICENSE VALIDATION (LAYER 2 SOFT GATE) ---
+// Validates key format (e.g. MBQ-XXXX-XXXX-XXXX)
+bool is_valid_license = str.length(license_key) >= 10 and str.substring(license_key, 0, 4) == "MBQ-"
+bool is_pro_unlocked  = is_valid_license or (license_key == "") // Enabled for testing or active license
+
+// --- 3. CORE ALGORITHM ENGINE (STRICT NON-REPAINTING) ---
+// Multi-timeframe trend confluence + ATR Volatility Envelope
+atr_val = ta.atr(atr_period)
+ema_fast = ta.ema(close, 9)
+ema_slow = ta.ema(close, 21)
+ema_trend = ta.ema(close, 200)
+
+// Volatility bands calculation
+upper_band = ema_slow + (atr_val * sensitivity)
+lower_band = ema_slow - (atr_val * sensitivity)
+
+// Trend momentum & confirmation
+bullish_momentum = (close > upper_band) and (ema_fast > ema_slow) and (close > open)
+bearish_momentum = (close < lower_band) and (ema_fast < ema_slow) and (close < open)
+
+// State tracking (only confirm when barstate is confirmed to prevent repainting)
+var int last_signal = 0 // 1 for buy, -1 for sell
+
+buy_condition  = bullish_momentum and (last_signal != 1) and barstate.isconfirmed
+sell_condition = bearish_momentum and (last_signal != -1) and barstate.isconfirmed
+
+if buy_condition
+    last_signal := 1
+
+if sell_condition
+    last_signal := -1
+
+// --- 4. SIGNALS PLOTTING & DYNAMIC TP / SL ---
+var float entry_price = na
+var float sl_price = na
+var float tp1_price = na
+var float tp2_price = na
+var float tp3_price = na
+
+if buy_condition
+    entry_price := close
+    sl_price    := close - (atr_val * sl_mult)
+    float risk  = entry_price - sl_price
+    tp1_price   := entry_price + (risk * tp1_mult)
+    tp2_price   := entry_price + (risk * tp2_mult)
+    tp3_price   := entry_price + (risk * tp3_mult)
+
+    label.new(
+      bar_index, low - atr_val * 0.5, "MBQ BUY\n▲", 
+      color=color.rgb(16, 185, 129), textcolor=color.black, 
+      style=label.style_label_up, size=size.normal,
+      tooltip="MBQ Non-Repainting Confirmed Buy Signal\nEntry: " + str.tostring(entry_price, "#.##")
+    )
+
+    if show_tpsl
+        line.new(bar_index, entry_price, bar_index + 10, entry_price, color=color.cyan, width=1, style=line.style_dotted)
+        line.new(bar_index, tp1_price, bar_index + 10, tp1_price, color=color.green, width=1)
+        line.new(bar_index, tp2_price, bar_index + 10, tp2_price, color=color.green, width=1)
+        line.new(bar_index, tp3_price, bar_index + 10, tp3_price, color=color.green, width=2)
+        line.new(bar_index, sl_price, bar_index + 10, sl_price, color=color.red, width=1)
+
+if sell_condition
+    entry_price := close
+    sl_price    := close + (atr_val * sl_mult)
+    float risk  = sl_price - entry_price
+    tp1_price   := entry_price - (risk * tp1_mult)
+    tp2_price   := entry_price - (risk * tp2_mult)
+    tp3_price   := entry_price - (risk * tp3_mult)
+
+    label.new(
+      bar_index, high + atr_val * 0.5, "MBQ SELL\n▼", 
+      color=color.rgb(239, 68, 68), textcolor=color.white, 
+      style=label.style_label_down, size=size.normal,
+      tooltip="MBQ Non-Repainting Confirmed Sell Signal\nEntry: " + str.tostring(entry_price, "#.##")
+    )
+
+    if show_tpsl
+        line.new(bar_index, entry_price, bar_index + 10, entry_price, color=color.cyan, width=1, style=line.style_dotted)
+        line.new(bar_index, tp1_price, bar_index + 10, tp1_price, color=color.green, width=1)
+        line.new(bar_index, tp2_price, bar_index + 10, tp2_price, color=color.green, width=1)
+        line.new(bar_index, tp3_price, bar_index + 10, tp3_price, color=color.green, width=2)
+        line.new(bar_index, sl_price, bar_index + 10, sl_price, color=color.red, width=1)
+
+// Trend ribbon plotting
+p_fast = plot(ema_fast, "Fast Momentum", color=color.new(color.cyan, 60), linewidth=1)
+p_slow = plot(ema_slow, "Slow Momentum", color=color.new(color.purple, 60), linewidth=1)
+fill(p_fast, p_slow, color = ema_fast > ema_slow ? color.new(color.cyan, 85) : color.new(color.purple, 85))
+
+// Baseline 200 EMA
+plot(ema_trend, "Baseline 200 EMA", color=color.new(color.white, 70), linewidth=2)
+
+// --- 5. ON-CHART MULTI-TIMEFRAME TREND MATRIX HUD ---
+calc_tf_bias(tf_string) =>
+    [tf_close, tf_ema_f, tf_ema_s] = request.security(syminfo.tickerid, tf_string, [close, ta.ema(close, 9), ta.ema(close, 21)], lookahead=barmerge.lookahead_off)
+    tf_ema_f > tf_ema_s and tf_close > tf_ema_f ? 1 : (tf_ema_f < tf_ema_s and tf_close < tf_ema_f ? -1 : 0)
+
+if use_trend_hud and is_pro_unlocked and barstate.islast
+    var table hud = table.new(position.top_right, 6, 2, bgcolor=color.new(#0B0F1A, 10), border_color=color.new(#1F293D, 20), border_width=1)
+    
+    // Headers
+    table.cell(hud, 0, 0, "MBQ ALGO HUD", bgcolor=color.new(#00F0FF, 85), text_color=color.white, text_size=size.tiny)
+    table.cell(hud, 1, 0, "5M", bgcolor=color.new(#121829, 20), text_color=color.slate, text_size=size.tiny)
+    table.cell(hud, 2, 0, "15M", bgcolor=color.new(#121829, 20), text_color=color.slate, text_size=size.tiny)
+    table.cell(hud, 3, 0, "1H", bgcolor=color.new(#121829, 20), text_color=color.slate, text_size=size.tiny)
+    table.cell(hud, 4, 0, "4H", bgcolor=color.new(#121829, 20), text_color=color.slate, text_size=size.tiny)
+    table.cell(hud, 5, 0, "1D", bgcolor=color.new(#121829, 20), text_color=color.slate, text_size=size.tiny)
+
+    // Values
+    int b_5m  = calc_tf_bias("5")
+    int b_15m = calc_tf_bias("15")
+    int b_1h  = calc_tf_bias("60")
+    int b_4h  = calc_tf_bias("240")
+    int b_1d  = calc_tf_bias("D")
+
+    table.cell(hud, 0, 1, "BIAS", bgcolor=color.new(#121829, 20), text_color=color.white, text_size=size.tiny)
+    table.cell(hud, 1, 1, b_5m == 1 ? "BULL ▲" : (b_5m == -1 ? "BEAR ▼" : "NEUT —"), bgcolor=b_5m == 1 ? color.new(color.green, 70) : (b_5m == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)), text_color=color.white, text_size=size.tiny)
+    table.cell(hud, 2, 1, b_15m == 1 ? "BULL ▲" : (b_15m == -1 ? "BEAR ▼" : "NEUT —"), bgcolor=b_15m == 1 ? color.new(color.green, 70) : (b_15m == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)), text_color=color.white, text_size=size.tiny)
+    table.cell(hud, 3, 1, b_1h == 1 ? "BULL ▲" : (b_1h == -1 ? "BEAR ▼" : "NEUT —"), bgcolor=b_1h == 1 ? color.new(color.green, 70) : (b_1h == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)), text_color=color.white, text_size=size.tiny)
+    table.cell(hud, 4, 1, b_4h == 1 ? "BULL ▲" : (b_4h == -1 ? "BEAR ▼" : "NEUT —"), bgcolor=b_4h == 1 ? color.new(color.green, 70) : (b_4h == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)), text_color=color.white, text_size=size.tiny)
+    table.cell(hud, 5, 1, b_1d == 1 ? "BULL ▲" : (b_1d == -1 ? "BEAR ▼" : "NEUT —"), bgcolor=b_1d == 1 ? color.new(color.green, 70) : (b_1d == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)), text_color=color.white, text_size=size.tiny)
+
+// --- 6. TRADINGVIEW NATIVE ALERT CONDITIONS ---
+alertcondition(buy_condition, title="MBQ ALGO: Buy Signal Confirmed", message="MBQ ALGO: Buy Signal on {{ticker}} at {{close}}. TP1: " + str.tostring(tp1_price, "#.##") + " | SL: " + str.tostring(sl_price, "#.##"))
+alertcondition(sell_condition, title="MBQ ALGO: Sell Signal Confirmed", message="MBQ ALGO: Sell Signal on {{ticker}} at {{close}}. TP1: " + str.tostring(tp1_price, "#.##") + " | SL: " + str.tostring(sl_price, "#.##"))
