@@ -1,40 +1,65 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight, Flame } from 'lucide-react';
-
-const tickerItems = [
-  { pair: 'BTC/USDT', price: '$64,820', change: '+3.4%', signal: 'BUY TP3 HIT', status: 'up' },
-  { pair: 'XAU/USD (Gold)', price: '$2,514.80', change: '+1.2%', signal: 'TP2 SECURED', status: 'up' },
-  { pair: 'EUR/USD', price: '1.0942', change: '-0.3%', signal: 'SELL CONFIRMED', status: 'down' },
-  { pair: 'NAS100', price: '19,840', change: '+2.1%', signal: 'BUY ACTIVE', status: 'up' },
-  { pair: 'ETH/USDT', price: '$3,410.50', change: '+4.8%', signal: 'TP3 +18.4%', status: 'up' },
-  { pair: 'US30', price: '40,210', change: '+0.8%', signal: 'TP1 HIT', status: 'up' },
-  { pair: 'GBP/USD', price: '1.2980', change: '+0.5%', signal: 'BUY CONFIRMED', status: 'up' },
-  { pair: 'SOL/USDT', price: '$154.20', change: '+6.2%', signal: 'TP3 REACHED', status: 'up' },
-];
+import { TrendingUp, TrendingDown, Zap } from 'lucide-react';
 
 export default function MarketTicker() {
+  const tickerItems = [
+    { symbol: 'BTC/USDT', price: '$67,420.50', change: '+4.82%', isUp: true, signal: 'MBQ BUY ▲', asset: 'Crypto' },
+    { symbol: 'ETH/USDT', price: '$3,540.20', change: '+3.15%', isUp: true, signal: 'BULLISH', asset: 'Crypto' },
+    { symbol: 'XAU/USD', price: '$2,412.80', change: '+1.85%', isUp: true, signal: 'TP3 TARGET HIT', asset: 'Gold' },
+    { symbol: 'NAS100', price: '19,845.20', change: '+1.24%', isUp: true, signal: 'MBQ BUY ▲', asset: 'Index' },
+    { symbol: 'EUR/USD', price: '1.08940', change: '-0.14%', isUp: false, signal: 'NEUTRAL', asset: 'Forex' },
+    { symbol: 'SOL/USDT', price: '$156.40', change: '+7.12%', isUp: true, signal: 'TP2 TARGET HIT', asset: 'Crypto' },
+    { symbol: 'GBP/USD', price: '1.29650', change: '+0.38%', isUp: true, signal: 'MBQ BUY ▲', asset: 'Forex' },
+    { symbol: 'US30', price: '39,480.00', change: '+0.52%', isUp: true, signal: 'BULLISH', asset: 'Index' },
+    { symbol: 'NVDA', price: '$129.80', change: '+4.35%', isUp: true, signal: 'MBQ BUY ▲', asset: 'Stock' },
+    { symbol: 'OIL (WTI)', price: '$82.40', change: '-0.85%', isUp: false, signal: 'MBQ SELL ▼', asset: 'Commodity' },
+  ];
+
+  // Double the list for seamless continuous infinite marquee
+  const displayItems = [...tickerItems, ...tickerItems];
+
   return (
-    <div className="w-full bg-[#070913] border-y border-brand-border/60 py-3 overflow-hidden select-none">
-      <div className="flex w-[200%] animate-ticker hover:[animation-play-state:paused]">
-        
-        {/* Double ticker items for seamless loop */}
-        {[...tickerItems, ...tickerItems].map((item, idx) => (
-          <div 
-            key={idx} 
-            className="flex items-center space-x-3 mx-4 px-3.5 py-1.5 rounded-lg bg-[#0B0F1A] border border-slate-800/80 font-mono text-xs whitespace-nowrap"
+    <div className="relative w-full overflow-hidden bg-[#070B16] border-y border-white/10 py-3 select-none">
+      
+      {/* Side gradient fades for seamless scrolling */}
+      <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#070B16] to-transparent z-10 pointer-events-none"></div>
+      <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#070B16] to-transparent z-10 pointer-events-none"></div>
+
+      <div className="flex w-max animate-ticker hover:[animation-play-state:paused]">
+        {displayItems.map((item, idx) => (
+          <div
+            key={idx}
+            className="flex items-center gap-3 px-6 border-r border-white/5 font-mono text-xs whitespace-nowrap cursor-default hover:bg-white/[0.02] transition-colors"
           >
-            <span className="font-bold text-slate-200">{item.pair}</span>
-            <span className="text-slate-400">{item.price}</span>
-            <span className={`flex items-center font-bold ${item.status === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
-              {item.status === 'up' ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-              {item.change}
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
+            {/* Symbol & Asset Type */}
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-white tracking-wider">{item.symbol}</span>
+              <span className="text-[10px] text-slate-500 uppercase">({item.asset})</span>
+            </div>
+
+            {/* Price */}
+            <span className="font-semibold text-slate-200">{item.price}</span>
+
+            {/* 24h Change */}
+            <div className={`flex items-center gap-0.5 text-[11px] font-bold ${
+              item.isUp ? 'text-emerald-400' : 'text-rose-400'
+            }`}>
+              {item.isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              <span>{item.change}</span>
+            </div>
+
+            {/* Algorithm Signal Tag */}
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tight border ${
+              item.isUp
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+                : item.signal === 'NEUTRAL'
+                ? 'bg-slate-800 text-slate-400 border-slate-700'
+                : 'bg-rose-500/10 text-rose-300 border-rose-500/25'
+            }`}>
               {item.signal}
             </span>
           </div>
         ))}
-
       </div>
     </div>
   );

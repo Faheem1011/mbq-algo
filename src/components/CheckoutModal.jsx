@@ -1,316 +1,270 @@
 import React, { useState } from 'react';
-import { X, Lock, CheckCircle2, CreditCard, Shield, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { X, ShieldCheck, Check, ArrowRight, CreditCard, Sparkles, Copy, CheckCircle2, RefreshCw, Lock } from 'lucide-react';
 
-export default function CheckoutModal({ isOpen, onClose, selectedPlan, currency, onSuccess }) {
-  if (!isOpen || !selectedPlan) return null;
-
-  const [name, setName] = useState('');
+export default function CheckoutModal({ planName = 'Pro Quarterly', onClose, onOpenDashboard }) {
+  const [step, setStep] = useState(1); // 1 = Form, 2 = Processing, 3 = Success
   const [email, setEmail] = useState('');
   const [tvUsername, setTvUsername] = useState('');
-  const [gateway, setGateway] = useState('safepay');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [completedOrder, setCompletedOrder] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [generatedKey, setGeneratedKey] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  const price = currency === 'PKR' 
-    ? `₨ ${selectedPlan.pricePKR.toLocaleString()}` 
-    : `$ ${selectedPlan.priceUSD}`;
+  const planPricing = {
+    'Starter': '$47 / month',
+    'Pro Quarterly': '$127 / quarter',
+    'Elite Annual': '$349 / year',
+    'Lifetime Access': '$699 one-time'
+  };
 
-  const handleSubmit = async (e) => {
+  const selectedPrice = planPricing[planName] || '$127 / quarter';
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name || !email || !tvUsername) {
-      setError('Please fill in all fields including your TradingView username.');
-      return;
-    }
-    setError('');
-    setLoading(true);
+    if (!email || !tvUsername) return;
 
-    try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId: selectedPlan.id,
-          planName: selectedPlan.name,
-          currency: currency,
-          amount: currency === 'PKR' ? selectedPlan.pricePKR : selectedPlan.priceUSD,
-          name,
-          email,
-          tvUsername,
-          gateway
-        })
-      });
+    setStep(2); // Start processing simulation
 
-      const data = await response.json();
+    // Simulate backend Stripe webhook + TV entitlement step
+    setTimeout(() => {
+      const randHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const randHex2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const randHex3 = Math.random().toString(36).substring(2, 6).toUpperCase();
+      setGeneratedKey(`MBQ-${randHex}-${randHex2}-${randHex3}-PRO`);
+      setStep(3); // Success
+    }, 2000);
+  };
 
-      if (data.success) {
-        setCompletedOrder({
-          orderId: data.orderId,
-          licenseKey: data.licenseKey,
-          tvUsername: data.tvUsername,
-          planName: selectedPlan.name,
-          gateway: data.gateway,
-          status: data.status
-        });
-        if (onSuccess) onSuccess(data);
-      } else {
-        setError(data.message || 'Payment processing could not be initiated.');
-      }
-    } catch (err) {
-      // Fallback client simulation if backend is running separately
-      const mockKey = `MBQ-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      setCompletedOrder({
-        orderId: `ORD-PK-${Math.floor(100000 + Math.random() * 900000)}`,
-        licenseKey: mockKey,
-        tvUsername,
-        planName: selectedPlan.name,
-        gateway: gateway === 'meezan' ? 'Meezan Bank MPGS' : 'Safepay Pakistan',
-        status: 'Active (TradingView Invite Issued)'
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleCopy = () => {
+    navigator.clipboard.writeText(generatedKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-lg rounded-2xl bg-[#0B0F1A] border border-brand-border p-6 sm:p-8 shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-[#080C18] border border-white/15 rounded-2xl p-6 sm:p-8 shadow-2xl overflow-hidden">
         
+        {/* Glow ambient */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#121829] transition-colors"
+          className="absolute top-5 right-5 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 transition-colors"
+          aria-label="Close Checkout"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
-        {!completedOrder ? (
+        {/* STEP 1: Form Input */}
+        {step === 1 && (
           <div>
-            {/* Header */}
             <div className="mb-6">
-              <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono mb-2">
-                <Lock className="w-3 h-3" /> Secure 256-bit Checkout
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono mb-2">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>256-BIT ENCRYPTED CHECKOUT</span>
               </div>
-              <h3 className="text-2xl font-extrabold text-white">
-                Unlock {selectedPlan.name}
+              <h3 className="text-2xl font-bold font-['Outfit'] text-white">
+                Complete Your Order
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Enter your details to generate your signed license and grant TradingView script access.
+              <p className="text-xs text-slate-400 font-mono mt-1">
+                Selected Plan: <span className="text-cyan-400 font-bold">{planName}</span> ({selectedPrice})
               </p>
             </div>
 
-            {/* Plan Summary Card */}
-            <div className="p-4 rounded-xl bg-[#070913] border border-slate-800 flex items-center justify-between mb-6">
-              <div>
-                <span className="text-xs text-slate-400 font-mono block">Selected Plan</span>
-                <span className="text-base font-bold text-white">{selectedPlan.name}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-xl font-extrabold text-cyan-400 font-mono">{price}</span>
-                <span className="text-[10px] text-slate-400 block font-mono">Billed in {currency}</span>
-              </div>
-            </div>
-
-            {error && (
-              <div className="p-3 mb-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium">
-                {error}
-              </div>
-            )}
-
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Muhammad Ali"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-[#121829] border border-slate-800 text-white text-sm focus:border-cyan-400 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Email Address (For License & Receipt)</label>
+                <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5">
+                  Email Address (For License & Invoices) *
+                </label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ali.trader@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-[#121829] border border-slate-800 text-white text-sm focus:border-cyan-400 focus:outline-none"
+                  placeholder="trader@example.com"
+                  className="w-full px-4 py-3 rounded-xl bg-[#05070E] border border-white/10 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  TradingView Username <span className="text-cyan-400 font-bold">*REQUIRED FOR INVITE</span>
+                <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5">
+                  TradingView Username (For Instant Script Access) *
                 </label>
                 <input
                   type="text"
                   required
                   value={tvUsername}
                   onChange={(e) => setTvUsername(e.target.value)}
-                  placeholder="e.g. ali_trader_pk"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-[#121829] border border-cyan-500/40 text-cyan-300 text-sm font-mono focus:border-cyan-400 focus:outline-none"
+                  placeholder="Your TradingView handle (e.g. Satoshi_99)"
+                  className="w-full px-4 py-3 rounded-xl bg-[#05070E] border border-white/10 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors font-mono"
                 />
-                <span className="text-[11px] text-slate-400 block mt-1">
-                  Exact username on TradingView. Our automation adds you to the invite-only access list.
+                <span className="text-[11px] text-slate-500 font-mono mt-1 block">
+                  Access is automatically granted to this username upon payment.
                 </span>
               </div>
 
-              {/* Payment Gateway Selection */}
-              <div className="pt-2">
-                <label className="block text-xs font-medium text-slate-300 mb-2">Select Payment Method</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  
-                  <label className={`flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-all ${
-                    gateway === 'safepay' ? 'bg-cyan-500/10 border-cyan-400 text-white' : 'bg-[#121829] border-slate-800 text-slate-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="gateway"
-                      value="safepay"
-                      checked={gateway === 'safepay'}
-                      onChange={() => setGateway('safepay')}
-                      className="text-cyan-400"
-                    />
-                    <div>
-                      <span className="font-bold block">Safepay Pakistan</span>
-                      <span className="text-[10px] text-slate-400">Meezan, 1Link, JazzCash, EasyPaisa</span>
-                    </div>
-                  </label>
+              <div>
+                <label className="block text-xs font-mono font-medium text-slate-300 mb-2">
+                  Select Payment Method
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('card')}
+                    className={`p-3 rounded-xl border text-xs font-mono font-medium flex flex-col items-center gap-1.5 transition-all ${
+                      paymentMethod === 'card'
+                        ? 'bg-cyan-500/10 border-cyan-500 text-cyan-300'
+                        : 'bg-[#05070E] border-white/10 text-slate-400'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Card / Stripe</span>
+                  </button>
 
-                  <label className={`flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-all ${
-                    gateway === 'meezan' ? 'bg-cyan-500/10 border-cyan-400 text-white' : 'bg-[#121829] border-slate-800 text-slate-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="gateway"
-                      value="meezan"
-                      checked={gateway === 'meezan'}
-                      onChange={() => setGateway('meezan')}
-                      className="text-cyan-400"
-                    />
-                    <div>
-                      <span className="font-bold block">Meezan Bank MPGS</span>
-                      <span className="text-[10px] text-slate-400">Direct Meezan Visa/Mastercard</span>
-                    </div>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('crypto')}
+                    className={`p-3 rounded-xl border text-xs font-mono font-medium flex flex-col items-center gap-1.5 transition-all ${
+                      paymentMethod === 'crypto'
+                        ? 'bg-cyan-500/10 border-cyan-500 text-cyan-300'
+                        : 'bg-[#05070E] border-white/10 text-slate-400'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Crypto (USDT)</span>
+                  </button>
 
-                  <label className={`flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-all ${
-                    gateway === 'payfast' ? 'bg-cyan-500/10 border-cyan-400 text-white' : 'bg-[#121829] border-slate-800 text-slate-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="gateway"
-                      value="payfast"
-                      checked={gateway === 'payfast'}
-                      onChange={() => setGateway('payfast')}
-                      className="text-cyan-400"
-                    />
-                    <div>
-                      <span className="font-bold block">PayFast APPS</span>
-                      <span className="text-[10px] text-slate-400">Direct Pakistani Bank Account</span>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-all ${
-                    gateway === 'card' ? 'bg-cyan-500/10 border-cyan-400 text-white' : 'bg-[#121829] border-slate-800 text-slate-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="gateway"
-                      value="card"
-                      checked={gateway === 'card'}
-                      onChange={() => setGateway('card')}
-                      className="text-cyan-400"
-                    />
-                    <div>
-                      <span className="font-bold block">International Card</span>
-                      <span className="text-[10px] text-slate-400">Global Visa/Mastercard</span>
-                    </div>
-                  </label>
-
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('local')}
+                    className={`p-3 rounded-xl border text-xs font-mono font-medium flex flex-col items-center gap-1.5 transition-all ${
+                      paymentMethod === 'local'
+                        ? 'bg-cyan-500/10 border-cyan-500 text-cyan-300'
+                        : 'bg-[#05070E] border-white/10 text-slate-400'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Bank / Easypaisa</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Submit CTA */}
+              {/* Order Total Box */}
+              <div className="p-4 rounded-xl bg-[#060912] border border-white/10 flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-400">Total Due Today:</span>
+                <span className="text-lg font-bold text-white">{selectedPrice}</span>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full mt-4 py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-400 to-cyan-300 text-black hover:opacity-95 transition-all shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center space-x-2"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 text-black font-bold text-sm shadow-xl shadow-cyan-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Connecting Gateway...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Proceed to Secure Payment ({price})</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
+                <span>Authorize & Activate Script</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
-            </form>
 
-            <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-center space-x-2 text-[11px] text-slate-400">
-              <Shield className="w-3.5 h-3.5 text-emerald-400" />
-              <span>7-Day Money-Back Guarantee • Automated Instant Activation</span>
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-mono">
+                <Lock className="w-3 h-3 text-slate-500" />
+                <span>Guaranteed 7-Day Money Back Policy • Cancel Anytime</span>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* STEP 2: Processing Simulation */}
+        {step === 2 && (
+          <div className="py-12 text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400 animate-spin">
+              <RefreshCw className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2 font-mono">
+              <h4 className="text-lg font-bold text-white">
+                Synchronizing With TradingView...
+              </h4>
+              <p className="text-xs text-slate-400">
+                Granting invite-only access to <span className="text-cyan-400 font-bold">{tvUsername}</span>
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Signing cryptographic license key & creating customer account...
+              </p>
             </div>
           </div>
-        ) : (
-          /* Order Confirmation & Instant Activation Screen */
-          <div className="text-center py-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.4)]">
-              <CheckCircle2 className="w-8 h-8" />
+        )}
+
+        {/* STEP 3: Success Screen */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 mb-4">
+                <Check className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-bold font-['Outfit'] text-white">
+                Payment Confirmed!
+              </h3>
+              <p className="text-xs text-slate-400 font-mono mt-1">
+                Your TradingView account has been granted full access to MBQ Algo X v5.
+              </p>
             </div>
 
-            <h3 className="text-2xl font-extrabold text-white">
-              Order Confirmed & Activated!
-            </h3>
-            <p className="text-sm text-slate-300 mt-1 max-w-sm mx-auto">
-              Your license has been issued and linked to TradingView username{' '}
-              <span className="text-cyan-400 font-mono font-bold">@{completedOrder.tvUsername}</span>.
-            </p>
+            {/* Generated License Key Card */}
+            <div className="p-4 rounded-xl bg-[#05070E] border border-cyan-500/30 space-y-2">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">Your Signed License Key:</span>
+                <span className="text-cyan-400 font-bold">PRO UNLOCKED</span>
+              </div>
 
-            {/* Issued License Box */}
-            <div className="my-6 p-4 rounded-xl bg-[#070913] border border-cyan-500/40 text-left">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
-                Your MBQ ALGO License Key
-              </span>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-sm sm:text-base font-bold text-cyan-300 select-all">
-                  {completedOrder.licenseKey}
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-[#0A0F1E] border border-white/10">
+                <span className="flex-1 font-mono text-xs text-cyan-300 font-bold select-all">
+                  {generatedKey}
                 </span>
                 <button
-                  onClick={() => navigator.clipboard.writeText(completedOrder.licenseKey)}
-                  className="px-2.5 py-1 rounded bg-[#121829] border border-slate-700 text-xs text-slate-200 hover:text-white"
+                  onClick={handleCopy}
+                  className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-mono text-white flex items-center gap-1"
                 >
-                  Copy
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-cyan-400" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
             </div>
 
-            {/* Next Step Instructions */}
-            <div className="text-left p-4 rounded-xl bg-[#121829]/60 border border-slate-800 space-y-2 text-xs text-slate-300">
-              <div className="font-bold text-white flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-purple-400" /> Next Steps to Add Indicator:
+            {/* Next Steps Checklist */}
+            <div className="space-y-2.5 font-mono text-xs text-slate-300 bg-white/[0.02] p-4 rounded-xl border border-white/5">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>TradingView invite sent to <strong className="text-white">@{tvUsername}</strong></span>
               </div>
-              <p>1. Open <strong>TradingView.com</strong> and launch any chart.</p>
-              <p>2. Click <strong>Indicators</strong> at top -&gt; select <strong>"Invite-Only Scripts"</strong>.</p>
-              <p>3. Click <strong>"MBQ ALGO X Pro"</strong> to add it to your chart.</p>
-              <p>4. In indicator settings, paste your license key to unlock VIP multi-timeframe HUD.</p>
+              <div className="flex items-center gap-2 text-emerald-400">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Login credentials dispatched to <strong className="text-white">{email}</strong></span>
+              </div>
+              <div className="flex items-center gap-2 text-cyan-400">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Open TradingView &gt; Indicators &gt; "Invite-Only Scripts"</span>
+              </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="mt-6 w-full py-3 rounded-xl font-bold text-xs bg-cyan-400 text-black hover:bg-cyan-300 transition-all"
-            >
-              Open Client Portal
-            </button>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenDashboard();
+                }}
+                className="flex-1 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs transition-colors flex items-center justify-center gap-2"
+              >
+                <span>Go to Client Portal</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={onClose}
+                className="py-3 px-6 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-mono text-xs border border-white/10"
+              >
+                Done
+              </button>
+            </div>
           </div>
         )}
 

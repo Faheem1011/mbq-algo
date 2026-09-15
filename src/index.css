@@ -3,60 +3,96 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     background-color: #05070E;
     color: #F3F4F6;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.025em;
   }
 }
 
-/* Custom glowing effects */
-.glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(0, 240, 255, 0.4);
+/* Ambient glow backgrounds */
+.bg-ambient-grid {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
-.glow-purple {
-  box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.4);
+.hero-radial-glow {
+  background: radial-gradient(circle 800px at 50% -15%, rgba(0, 240, 255, 0.15) 0%, rgba(139, 92, 246, 0.12) 40%, rgba(5, 7, 14, 0) 80%);
 }
 
-.text-gradient-cyan-purple {
-  background: linear-gradient(135deg, #00F0FF 0%, #A855F7 50%, #EC4899 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.cyan-radial-glow {
+  background: radial-gradient(circle 450px at 50% 50%, rgba(0, 240, 255, 0.12) 0%, transparent 70%);
 }
 
-.text-gradient-gold {
-  background: linear-gradient(135deg, #FDE047 0%, #EAB308 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.purple-radial-glow {
+  background: radial-gradient(circle 450px at 50% 50%, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
 }
 
-/* Modern glassmorphism panel */
+/* Glass panels */
 .glass-panel {
-  background: rgba(11, 15, 26, 0.75);
+  background: rgba(11, 15, 25, 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-panel-hover:hover {
-  background: rgba(18, 24, 41, 0.85);
-  border-color: rgba(0, 240, 255, 0.25);
+  background: rgba(14, 20, 34, 0.85);
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(0, 240, 255, 0.15);
   transform: translateY(-2px);
 }
 
-/* Custom scrollbar */
+/* Glowing border pills */
+.pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.95rem;
+  border-radius: 9999px;
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #00F0FF;
+}
+
+.pill-badge-purple {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.95rem;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #C4B5FD;
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {

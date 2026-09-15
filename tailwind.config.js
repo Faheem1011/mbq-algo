@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -10,9 +10,10 @@ module.exports = {
       colors: {
         brand: {
           dark: '#05070E',
-          card: '#0B0F1A',
-          cardLight: '#121829',
+          card: '#0B0F19',
+          cardLight: '#111827',
           border: '#1F293D',
+          borderLight: 'rgba(255, 255, 255, 0.08)',
           cyan: '#00F0FF',
           blue: '#3B82F6',
           purple: '#8B5CF6',
@@ -22,12 +23,15 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+        display: ['Outfit', 'Plus Jakarta Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'IBM Plex Mono', 'monospace'],
       },
       animation: {
         'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
-        'ticker': 'ticker 30s linear infinite',
+        'ticker': 'ticker 35s linear infinite',
         'float': 'float 4s ease-in-out infinite',
+        'shimmer': 'shimmer 2.5s infinite',
       },
       keyframes: {
         pulseGlow: {
@@ -41,9 +45,13 @@ module.exports = {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-8px)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
         }
       }
     },
   },
   plugins: [],
-}
+};

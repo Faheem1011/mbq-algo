@@ -2,108 +2,121 @@ import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import MarketTicker from './components/MarketTicker';
+import LiveChartSimulator from './components/LiveChartSimulator';
 import BentoFeatures from './components/BentoFeatures';
-import Backtests from './components/Backtests';
-import ComparisonTable from './components/ComparisonTable';
-import Reviews from './components/Reviews';
-import Pricing from './components/Pricing';
-import FAQ from './components/FAQ';
+import BacktestsCarousel from './components/BacktestsCarousel';
+import CustomerDashboard from './components/CustomerDashboard';
+import ReviewsWall from './components/ReviewsWall';
+import ComparisonMatrix from './components/ComparisonMatrix';
+import PricingSection from './components/PricingSection';
+import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
 import CheckoutModal from './components/CheckoutModal';
-import CustomerDashboard from './components/CustomerDashboard';
-import SetupGuideModal from './components/SetupGuideModal';
 
 export default function App() {
-  const [currency, setCurrency] = useState('PKR');
-  const [checkoutPlan, setCheckoutPlan] = useState(null);
-  const [dashboardOpen, setDashboardOpen] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
-  const [userOrder, setUserOrder] = useState({
-    licenseKey: 'MBQ-PRO-89F2-K9A1-V5',
-    tvUsername: 'mbq_trader_pk',
-    planName: 'Pro Quarterly (Most Popular)',
-    status: 'Active (Invite-Only Verified)'
-  });
+  const [checkoutModal, setCheckoutModal] = useState({ open: false, plan: 'Pro Quarterly' });
+  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
 
-  const handleOpenCheckout = (plan) => {
-    setCheckoutPlan(plan);
+  const handleOpenCheckout = (planName = 'Pro Quarterly') => {
+    setCheckoutModal({ open: true, plan: planName });
   };
 
-  const handleCheckoutSuccess = (orderData) => {
-    setUserOrder({
-      licenseKey: orderData.licenseKey,
-      tvUsername: orderData.tvUsername,
-      planName: orderData.planName,
-      status: orderData.status
-    });
+  const handleCloseCheckout = () => {
+    setCheckoutModal({ open: false, plan: 'Pro Quarterly' });
+  };
+
+  const handleOpenDashboard = () => {
+    setDashboardModalOpen(true);
+  };
+
+  const handleCloseDashboard = () => {
+    setDashboardModalOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-[#05070E] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-black">
       
-      {/* Sticky Navigation */}
+      {/* Sticky Top Navigation */}
       <Navbar
-        currency={currency}
-        setCurrency={setCurrency}
-        onOpenDashboard={() => setDashboardOpen(true)}
         onOpenCheckout={handleOpenCheckout}
-        onOpenGuide={() => setGuideOpen(true)}
+        onOpenDashboard={handleOpenDashboard}
       />
 
-      {/* Main Page Sections */}
+      {/* Main Content Sections */}
       <main className="flex-grow">
+        {/* 1. Hero with Real Video Demo */}
         <Hero
           onOpenCheckout={handleOpenCheckout}
-          onOpenGuide={() => setGuideOpen(true)}
+          onOpenDashboard={handleOpenDashboard}
         />
 
+        {/* 2. Auto-scrolling Market Ticker */}
         <MarketTicker />
 
-        <BentoFeatures />
-
-        <Backtests />
-
-        <ComparisonTable />
-
-        <Reviews />
-
-        <Pricing
-          currency={currency}
+        {/* 3. Interactive Pine Script V5 Live Chart Simulator */}
+        <LiveChartSimulator
           onOpenCheckout={handleOpenCheckout}
         />
 
-        <FAQ />
+        {/* 4. Asymmetric Bento Features Grid */}
+        <BentoFeatures
+          onOpenCheckout={handleOpenCheckout}
+          onOpenDashboard={handleOpenDashboard}
+        />
+
+        {/* 5. Verified Backtests & Replays */}
+        <BacktestsCarousel
+          onOpenCheckout={handleOpenCheckout}
+        />
+
+        {/* 6. Customer Licensing Dashboard (The Core SwiftAlgo-Beating Differentiator) */}
+        <CustomerDashboard
+          onOpenCheckout={handleOpenCheckout}
+        />
+
+        {/* 7. Verified Reviews Wall */}
+        <ReviewsWall
+          onOpenCheckout={handleOpenCheckout}
+        />
+
+        {/* 8. SwiftAlgo vs MBQ Algo X Comparison Matrix */}
+        <ComparisonMatrix
+          onOpenCheckout={handleOpenCheckout}
+        />
+
+        {/* 9. 4-Tier Pricing Ladder with 7-Day Guarantee */}
+        <PricingSection
+          onOpenCheckout={handleOpenCheckout}
+        />
+
+        {/* 10. High-Intent FAQ Accordion */}
+        <FAQSection
+          onOpenCheckout={handleOpenCheckout}
+        />
       </main>
 
-      {/* Footer */}
+      {/* Institutional Footer with Risk Disclaimers */}
       <Footer
-        onOpenGuide={() => setGuideOpen(true)}
-        onOpenDashboard={() => setDashboardOpen(true)}
+        onOpenCheckout={handleOpenCheckout}
+        onOpenDashboard={handleOpenDashboard}
       />
 
-      {/* Interactive Modals */}
-      <CheckoutModal
-        isOpen={!!checkoutPlan}
-        onClose={() => setCheckoutPlan(null)}
-        selectedPlan={checkoutPlan}
-        currency={currency}
-        onSuccess={handleCheckoutSuccess}
-      />
+      {/* Interactive Checkout Modal */}
+      {checkoutModal.open && (
+        <CheckoutModal
+          planName={checkoutModal.plan}
+          onClose={handleCloseCheckout}
+          onOpenDashboard={handleOpenDashboard}
+        />
+      )}
 
-      <CustomerDashboard
-        isOpen={dashboardOpen}
-        onClose={() => setDashboardOpen(false)}
-        userOrder={userOrder}
-        onOpenGuide={() => {
-          setDashboardOpen(false);
-          setGuideOpen(true);
-        }}
-      />
-
-      <SetupGuideModal
-        isOpen={guideOpen}
-        onClose={() => setGuideOpen(false)}
-      />
+      {/* Standalone Dashboard Modal Preview */}
+      {dashboardModalOpen && (
+        <CustomerDashboard
+          isModal={true}
+          onClose={handleCloseDashboard}
+        />
+      )}
 
     </div>
   );
