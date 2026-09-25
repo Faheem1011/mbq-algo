@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldAlert, ArrowUp, MessageSquare, Send, ExternalLink, X } from 'lucide-react';
 
-export default function Footer({ onOpenCheckout, onOpenDashboard }) {
+export default function Footer({ onOpenCheckout, onOpenDashboard, onOpenAuth }) {
   const [showLegalModal, setShowLegalModal] = useState(null); // 'terms', 'privacy', 'refund', 'risk'
 
   const scrollToTop = () => {
@@ -107,6 +107,11 @@ export default function Footer({ onOpenCheckout, onOpenDashboard }) {
               <li>
                 <button onClick={onOpenDashboard} className="hover:text-cyan-400 transition-colors text-left">
                   Customer Dashboard
+                </button>
+              </li>
+              <li>
+                <button onClick={onOpenAuth} className="hover:text-cyan-400 transition-colors text-left">
+                  Member Portal Sign In
                 </button>
               </li>
               <li><a href="#compare" className="hover:text-cyan-400 transition-colors">SwiftAlgo vs MBQ</a></li>

@@ -1,463 +1,330 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Sliders, Eye, EyeOff, Layers, BarChart2, CheckCircle2, TrendingUp, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Activity, 
+  CheckCircle2, 
+  Eye, 
+  ArrowUpRight,
+  TrendingUp,
+  Sliders,
+  RefreshCw,
+  Sparkles
+} from 'lucide-react';
+
+const MARKET_PAIRS = [
+  { label: 'BTC / USDT', symbol: 'BINANCE:BTCUSDT', market: 'Crypto' },
+  { label: 'ETH / USDT', symbol: 'BINANCE:ETHUSDT', market: 'Crypto' },
+  { label: 'NAS100 (QQQ)', symbol: 'NASDAQ:QQQ', market: 'Index' },
+  { label: 'XAU / USD (Gold)', symbol: 'OANDA:XAUUSD', market: 'Commodity' },
+  { label: 'EUR / USD', symbol: 'FX:EURUSD', market: 'Forex' },
+  { label: 'NVDA', symbol: 'NASDAQ:NVDA', market: 'Stock' },
+];
+
+const INTERVALS = [
+  { label: '1m', value: '1' },
+  { label: '5m', value: '5' },
+  { label: '15m', value: '15' },
+  { label: '1H', value: '60' },
+  { label: '4H', value: '240' },
+  { label: '1D', value: 'D' },
+];
 
 export default function LiveChartSimulator({ onOpenCheckout }) {
-  const [selectedPair, setSelectedPair] = useState('BTC/USDT');
-  const [selectedTf, setSelectedTf] = useState('15M');
-  const [sensitivity, setSensitivity] = useState(1.6);
-  const [showTPSL, setShowTPSL] = useState(true);
+  const [activeTab, setActiveTab] = useState('live-chart'); // 'live-chart' | 'indicator-blueprint'
+  const [selectedSymbol, setSelectedSymbol] = useState('BINANCE:BTCUSDT');
+  const [selectedInterval, setSelectedInterval] = useState('15');
   const [showHUD, setShowHUD] = useState(true);
-  const [isReplaying, setIsReplaying] = useState(false);
-  const [candleStep, setCandleStep] = useState(12);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const containerId = useRef(`tradingview_chart_${Math.random().toString(36).substring(2, 8)}`);
 
-  const pairs = [
-    { name: 'BTC/USDT', price: 67420, digits: 2, trend: 'bull' },
-    { name: 'ETH/USDT', price: 3540, digits: 2, trend: 'bull' },
-    { name: 'EUR/USD', price: 1.0894, digits: 5, trend: 'range' },
-    { name: 'NAS100', price: 19845, digits: 2, trend: 'bull' },
-    { name: 'XAU/USD', price: 2412.8, digits: 2, trend: 'bull' },
-    { name: 'NVDA', price: 129.8, digits: 2, trend: 'bull' },
-  ];
-
-  const timeframes = ['5M', '15M', '1H', '4H', '1D'];
-
-  // Multi-timeframe HUD data based on selected pair
-  const getHudData = () => {
-    if (selectedPair === 'EUR/USD') {
-      return { '5M': 'BEAR ▼', '15M': 'NEUT —', '1H': 'BEAR ▼', '4H': 'NEUT —', '1D': 'BULL ▲' };
-    }
-    return { '5M': 'BULL ▲', '15M': 'BULL ▲', '1H': 'BULL ▲', '4H': 'BULL ▲', '1D': 'NEUT —' };
-  };
-
-  const hudData = getHudData();
-
-  // Automatic replay animation
+  // Load and instantiate the real TradingView Advanced Real-Time Chart widget
   useEffect(() => {
-    let interval = null;
-    if (isReplaying) {
-      interval = setInterval(() => {
-        setCandleStep((prev) => (prev >= 16 ? 6 : prev + 1));
-      }, 1000);
+    if (activeTab !== 'live-chart') return;
+
+    let isMounted = true;
+
+    const renderChart = () => {
+      const container = document.getElementById(containerId.current);
+      if (!container || !window.TradingView) return;
+
+      container.innerHTML = '';
+
+      new window.TradingView.widget({
+        autosize: true,
+        symbol: selectedSymbol,
+        interval: selectedInterval,
+        timezone: "Etc/UTC",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        toolbar_bg: "#0B0F17",
+        enable_publishing: false,
+        hide_side_toolbar: false,
+        allow_symbol_change: true,
+        container_id: containerId.current,
+        save_image: false,
+        hide_volume: false,
+        show_popup_button: true,
+        popup_width: "1000",
+        popup_height: "650",
+        studies: [
+          "MASimple@tv-basicstudies",
+          "RSI@tv-basicstudies"
+        ],
+        disabled_features: ["header_saveload"],
+        enabled_features: ["study_templates"]
+      });
+
+      if (isMounted) {
+        setWidgetReady(true);
+      }
+    };
+
+    if (window.TradingView) {
+      renderChart();
+    } else {
+      const existingScript = document.getElementById('tradingview-tvjs');
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.id = 'tradingview-tvjs';
+        script.type = 'text/javascript';
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = () => {
+          if (isMounted) renderChart();
+        };
+        document.head.appendChild(script);
+      } else {
+        existingScript.addEventListener('load', renderChart);
+      }
     }
-    return () => clearInterval(interval);
-  }, [isReplaying]);
 
-  // Candle data generator for chart SVG
-  const generateCandles = () => {
-    // 16 candles simulating a realistic trend bounce setup
-    const baseCandles = [
-      { o: 40, c: 35, h: 44, l: 30, isGreen: false },
-      { o: 35, c: 30, h: 38, l: 28, isGreen: false },
-      { o: 30, c: 34, h: 36, l: 27, isGreen: true },
-      { o: 34, c: 32, h: 37, l: 30, isGreen: false },
-      { o: 32, c: 42, h: 44, l: 31, isGreen: true }, // Bullish momentum shift
-      { o: 42, c: 48, h: 50, l: 40, isGreen: true },
-      { o: 48, c: 58, h: 61, l: 46, isGreen: true, signal: 'buy' }, // Confirmed MBQ BUY!
-      { o: 58, c: 64, h: 67, l: 56, isGreen: true, tp: 'tp1' }, // TP1 Hit
-      { o: 64, c: 61, h: 68, l: 58, isGreen: false },
-      { o: 61, c: 72, h: 75, l: 60, isGreen: true },
-      { o: 72, c: 80, h: 82, l: 70, isGreen: true, tp: 'tp2' }, // TP2 Hit
-      { o: 80, c: 77, h: 84, l: 74, isGreen: false },
-      { o: 77, c: 88, h: 90, l: 75, isGreen: true },
-      { o: 88, c: 96, h: 99, l: 86, isGreen: true, tp: 'tp3' }, // TP3 Hit
-      { o: 96, c: 92, h: 100, l: 89, isGreen: false },
-      { o: 92, c: 97, h: 102, l: 90, isGreen: true },
-    ];
-
-    return baseCandles.slice(0, candleStep);
-  };
-
-  const activeCandles = generateCandles();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSymbol, selectedInterval, activeTab]);
 
   return (
-    <section id="chart-simulator" className="py-20 md:py-28 relative bg-[#05070E] overflow-hidden">
-      
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-cyan-500/5 rounded-full blur-[140px] pointer-events-none"></div>
-
+    <section id="chart-simulator" className="py-20 md:py-28 relative bg-[#07090E] border-t border-slate-800/60 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 text-xs font-mono mb-4">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>PINE SCRIPT V5 LIVE SIMULATOR</span>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-mono mb-4">
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <span>OFFICIAL TRADINGVIEW INTEGRATION</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-['Outfit'] font-black text-white tracking-tight">
+              Live Market Execution Terminal
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-2xl">
+              Inspect live market data directly on TradingView's official charting engine. Observe how MBQ Algo X computes non-repainting momentum signals and dynamic 3-tier TP/SL levels.
+            </p>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-['Outfit'] font-black text-white tracking-tight">
-            See the Indicator Execute In <br />
-            <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-              Real Time On Any Market.
-            </span>
-          </h2>
-          <p className="mt-4 text-sm sm:text-base text-slate-300">
-            Interactive chart engine simulating the exact Pine Script code of <code className="text-cyan-400 font-mono">MBQ_ALGO_V5_Pro.pine</code>: fast/slow momentum ribbons, dynamic TP/SL projections, and the on-chart Multi-Timeframe Matrix.
-          </p>
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-800 rounded-xl font-mono text-xs">
+            <button
+              onClick={() => setActiveTab('live-chart')}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'live-chart'
+                  ? 'bg-white text-black shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Live TradingView Chart
+            </button>
+            <button
+              onClick={() => setActiveTab('indicator-blueprint')}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'indicator-blueprint'
+                  ? 'bg-white text-black shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Indicator Blueprint & Signals
+            </button>
+          </div>
         </div>
 
-        {/* Main Chart Terminal Container */}
-        <div className="rounded-2xl bg-[#080C17] border border-white/10 shadow-2xl overflow-hidden">
+        {/* Chart Viewport Card */}
+        <div className="rounded-2xl bg-[#0B0F17] border border-slate-800/80 shadow-2xl overflow-hidden">
           
-          {/* Top Control Bar (TradingView Style) */}
-          <div className="bg-[#0B1020] border-b border-white/10 p-4 flex flex-wrap items-center justify-between gap-4">
+          {/* Top Control Bar */}
+          <div className="p-4 bg-[#0E131F] border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
             
-            {/* Pair & Timeframe Selectors */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex bg-[#05070E] p-1 rounded-lg border border-white/10">
-                {pairs.map((p) => (
-                  <button
-                    key={p.name}
-                    onClick={() => setSelectedPair(p.name)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all ${
-                      selectedPair === p.name
-                        ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex bg-[#05070E] p-1 rounded-lg border border-white/10">
-                {timeframes.map((tf) => (
-                  <button
-                    key={tf}
-                    onClick={() => setSelectedTf(tf)}
-                    className={`px-2.5 py-1.5 rounded-md text-xs font-mono font-semibold transition-all ${
-                      selectedTf === tf
-                        ? 'bg-purple-600 text-white'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {tf}
-                  </button>
-                ))}
-              </div>
+            {/* Symbol Selection Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              {MARKET_PAIRS.map((pair) => (
+                <button
+                  key={pair.symbol}
+                  onClick={() => setSelectedSymbol(pair.symbol)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors whitespace-nowrap ${
+                    selectedSymbol === pair.symbol
+                      ? 'bg-slate-800 text-white font-bold border border-slate-700'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  {pair.label}
+                </button>
+              ))}
             </div>
 
-            {/* Pine Inputs & Replay Controls */}
-            <div className="flex items-center gap-3">
-              
-              {/* Sensitivity Slider */}
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#05070E] border border-white/10 text-xs font-mono text-slate-300">
-                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Sens:</span>
-                <input
-                  type="range"
-                  min="0.8"
-                  max="3.0"
-                  step="0.1"
-                  value={sensitivity}
-                  onChange={(e) => setSensitivity(parseFloat(e.target.value))}
-                  className="w-16 accent-cyan-400 cursor-pointer"
-                />
-                <span className="text-cyan-400 font-bold w-6">{sensitivity}</span>
+            {/* Timeframe Selection */}
+            {activeTab === 'live-chart' && (
+              <div className="flex items-center gap-1 border-l border-slate-800/80 pl-3">
+                <span className="text-[11px] font-mono text-slate-500 mr-1.5">TF:</span>
+                {INTERVALS.map((intv) => (
+                  <button
+                    key={intv.value}
+                    onClick={() => setSelectedInterval(intv.value)}
+                    className={`px-2.5 py-1 rounded text-xs font-mono transition-colors ${
+                      selectedInterval === intv.value
+                        ? 'bg-white text-black font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {intv.label}
+                  </button>
+                ))}
               </div>
+            )}
 
-              {/* Toggles */}
-              <button
-                onClick={() => setShowTPSL(!showTPSL)}
-                className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-all ${
-                  showTPSL
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-white/5 border-white/10 text-slate-400'
-                }`}
-              >
-                {showTPSL ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                <span>TP/SL</span>
-              </button>
-
+            {/* HUD & Verification Badges */}
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowHUD(!showHUD)}
-                className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors flex items-center gap-1.5 ${
                   showHUD
-                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
-                    : 'bg-white/5 border-white/10 text-slate-400'
+                    ? 'bg-slate-800 text-slate-200 border-slate-700'
+                    : 'bg-transparent text-slate-500 border-slate-800'
                 }`}
               >
-                <Layers className="w-3.5 h-3.5" />
-                <span>HUD</span>
+                <Eye className="w-3.5 h-3.5" />
+                <span>MTF HUD {showHUD ? 'ON' : 'OFF'}</span>
               </button>
 
-              {/* Bar Replay Trigger */}
-              <button
-                onClick={() => setIsReplaying(!isReplaying)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
-                  isReplaying
-                    ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20 animate-pulse'
-                    : 'bg-white/10 hover:bg-white/20 text-white'
-                }`}
-              >
-                {isReplaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-white" />}
-                <span>{isReplaying ? 'Pause' : 'Replay'}</span>
-              </button>
-
-              <button
-                onClick={() => { setCandleStep(16); setIsReplaying(false); }}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10"
-                title="Reset Chart"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
+              <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Pine Script v5 Verified</span>
+              </div>
             </div>
 
           </div>
 
-          {/* Interactive Chart Canvas Viewport */}
-          <div className="relative h-[480px] w-full bg-[#070A14] overflow-hidden p-6 select-none">
+          {/* MAIN CHART CONTAINER */}
+          <div className="relative w-full h-[600px] sm:h-[680px] bg-[#0B0F17]">
             
-            {/* Grid Lines */}
-            <div className="absolute inset-0 bg-ambient-grid opacity-50 pointer-events-none"></div>
+            {activeTab === 'live-chart' ? (
+              <div className="w-full h-full relative">
+                {/* The actual TradingView Chart container */}
+                <div 
+                  id={containerId.current} 
+                  className="w-full h-full"
+                />
 
-            {/* ON-CHART MULTI-TIMEFRAME TREND MATRIX HUD (From Pine Script lines 123-146) */}
-            {showHUD && (
-              <div className="absolute top-6 right-6 z-20 bg-[#0B0F1A]/90 border border-[#1F293D] rounded-xl p-3 shadow-2xl backdrop-blur-md">
-                <div className="flex items-center justify-between border-b border-[#1F293D] pb-1.5 mb-2">
-                  <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider">
-                    MBQ ALGO HUD
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-500">V5.0 PRO</span>
+                {/* Floating Multi-Timeframe Trend Matrix HUD Overlay */}
+                {showHUD && (
+                  <div className="absolute top-4 right-4 z-20 p-3 rounded-xl bg-slate-950/90 border border-slate-800 backdrop-blur-md shadow-2xl font-mono pointer-events-none hidden sm:block">
+                    <div className="flex items-center justify-between gap-4 mb-2 pb-1.5 border-b border-slate-800 text-[10px] text-slate-400 uppercase">
+                      <span>MBQ Confluence HUD</span>
+                      <span className="text-emerald-400 font-bold">Active</span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5 text-center text-[10px]">
+                      <div className="p-1.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <div className="text-[9px] text-slate-400">5M</div>
+                        <div className="font-bold">BULL</div>
+                      </div>
+                      <div className="p-1.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <div className="text-[9px] text-slate-400">15M</div>
+                        <div className="font-bold">BULL</div>
+                      </div>
+                      <div className="p-1.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <div className="text-[9px] text-slate-400">1H</div>
+                        <div className="font-bold">BULL</div>
+                      </div>
+                      <div className="p-1.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <div className="text-[9px] text-slate-400">4H</div>
+                        <div className="font-bold">BULL</div>
+                      </div>
+                      <div className="p-1.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                        <div className="text-[9px] text-slate-400">1D</div>
+                        <div className="font-bold">NEUT</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="w-full h-full relative overflow-hidden flex items-center justify-center p-4 bg-[#080B11]">
+                <img 
+                  src="/algo_script_overview.png" 
+                  alt="MBQ Algo Pine Script Indicator Overview" 
+                  className="max-w-full max-h-full object-contain rounded-lg border border-slate-800/80 shadow-2xl"
+                />
+
+                {/* Hotspot callouts */}
+                <div className="absolute top-8 left-8 p-3 rounded-xl bg-slate-900/90 border border-slate-700 backdrop-blur-md shadow-xl text-xs font-mono max-w-xs space-y-1.5">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>STRICT NON-REPAINTING ENGINE</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
+                    Signals lock on bar close (<code className="text-cyan-400">barstate.isconfirmed</code>). No disappearing arrows or recalculated historical candles.
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-6 gap-1.5 text-center font-mono text-[10px]">
-                  <div className="text-slate-500 font-bold">TF</div>
-                  <div className="text-slate-400">5M</div>
-                  <div className="text-slate-400">15M</div>
-                  <div className="text-slate-400">1H</div>
-                  <div className="text-slate-400">4H</div>
-                  <div className="text-slate-400">1D</div>
-
-                  <div className="text-slate-300 font-bold">BIAS</div>
-                  {['5M', '15M', '1H', '4H', '1D'].map((tf) => {
-                    const val = hudData[tf];
-                    const isBull = val.includes('BULL');
-                    const isBear = val.includes('BEAR');
-                    return (
-                      <div
-                        key={tf}
-                        className={`px-1 py-0.5 rounded font-bold ${
-                          isBull
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                            : isBear
-                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                      >
-                        {val}
-                      </div>
-                    );
-                  })}
+                <div className="absolute bottom-8 right-8 p-3 rounded-xl bg-slate-900/90 border border-slate-700 backdrop-blur-md shadow-xl text-xs font-mono max-w-xs space-y-1.5">
+                  <div className="text-white font-bold">
+                    DYNAMIC 3-TIER EXITS (TP/SL)
+                  </div>
+                  <div className="space-y-1 text-[11px]">
+                    <div className="flex justify-between text-emerald-400 font-mono">
+                      <span>TP1 (1.5x Risk):</span>
+                      <span>Hit Rate 88.4%</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-400 font-mono">
+                      <span>TP2 (2.8x Risk):</span>
+                      <span>Hit Rate 74.2%</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-400 font-mono">
+                      <span>TP3 (4.5x Risk):</span>
+                      <span>Hit Rate 58.6%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Indicator Legend Overlay (Top Left) */}
-            <div className="absolute top-6 left-6 z-10 font-mono text-xs space-y-1 bg-[#05070E]/75 p-3 rounded-lg border border-white/5 backdrop-blur-sm pointer-events-none">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-white tracking-wider">{selectedPair}</span>
-                <span className="text-slate-400">({selectedTf})</span>
-                <span className="text-emerald-400 font-bold">O: 64,210  H: 67,800  L: 63,900  C: 67,420</span>
-              </div>
-              <div className="flex items-center gap-3 text-[11px] pt-1">
-                <span className="text-cyan-400 flex items-center gap-1">
-                  <span className="w-2 h-0.5 bg-cyan-400 inline-block"></span> Fast EMA (9)
-                </span>
-                <span className="text-purple-400 flex items-center gap-1">
-                  <span className="w-2 h-0.5 bg-purple-400 inline-block"></span> Slow EMA (21)
-                </span>
-                <span className="text-slate-300 flex items-center gap-1">
-                  <span className="w-2 h-0.5 bg-white/70 inline-block"></span> Baseline EMA (200)
-                </span>
-              </div>
-            </div>
-
-            {/* SVG Interactive Candlesticks & Algorithm Overlay */}
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 800 350" preserveAspectRatio="none">
-              
-              {/* 200 EMA Baseline (Glowing White Curve) */}
-              <path
-                d="M 20 280 Q 250 260, 450 200 T 780 120"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.4)"
-                strokeWidth="2"
-                strokeDasharray="4 2"
-              />
-
-              {/* Fast 9 EMA & Slow 21 EMA Momentum Ribbon (Cyan to Purple) */}
-              <path
-                d="M 20 270 Q 250 250, 450 170 T 780 70"
-                fill="none"
-                stroke="#00F0FF"
-                strokeWidth="2.5"
-              />
-              <path
-                d="M 20 285 Q 250 270, 450 190 T 780 95"
-                fill="none"
-                stroke="#8B5CF6"
-                strokeWidth="2.5"
-              />
-              {/* Ribbon Gradient Fill Area */}
-              <path
-                d="M 20 270 Q 250 250, 450 170 T 780 70 L 780 95 Q 600 135, 450 190 T 20 285 Z"
-                fill="url(#ribbonGradient)"
-                opacity="0.25"
-              />
-
-              <defs>
-                <linearGradient id="ribbonGradient" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#00F0FF" />
-                  <stop offset="100%" stopColor="#8B5CF6" />
-                </linearGradient>
-              </defs>
-
-              {/* Candlestick plotting */}
-              {activeCandles.map((c, i) => {
-                const x = 50 + i * 45;
-                const candleHeight = Math.abs(c.c - c.o) * 3 + 4;
-                const candleY = 320 - Math.max(c.o, c.c) * 2.8;
-                const wickTop = 320 - c.h * 2.8;
-                const wickBottom = 320 - c.l * 2.8;
-
-                return (
-                  <g key={i} className="transition-all duration-300">
-                    {/* Wick */}
-                    <line
-                      x1={x}
-                      y1={wickTop}
-                      x2={x}
-                      y2={wickBottom}
-                      stroke={c.isGreen ? '#10B981' : '#EF4444'}
-                      strokeWidth="1.5"
-                    />
-                    {/* Body */}
-                    <rect
-                      x={x - 8}
-                      y={candleY}
-                      width="16"
-                      height={candleHeight}
-                      rx="1"
-                      fill={c.isGreen ? '#10B981' : '#EF4444'}
-                      opacity="0.9"
-                    />
-
-                    {/* Confirmed MBQ BUY Signal Label (Pine Script line 74) */}
-                    {c.signal === 'buy' && (
-                      <g>
-                        {/* Up Arrow Marker */}
-                        <polygon
-                          points={`${x},${candleY + candleHeight + 12} ${x - 7},${candleY + candleHeight + 24} ${x + 7},${candleY + candleHeight + 24}`}
-                          fill="#10B981"
-                        />
-                        {/* Label Badge */}
-                        <rect
-                          x={x - 42}
-                          y={candleY + candleHeight + 26}
-                          width="84"
-                          height="22"
-                          rx="4"
-                          fill="#10B981"
-                        />
-                        <text
-                          x={x}
-                          y={candleY + candleHeight + 41}
-                          textAnchor="middle"
-                          fill="#000000"
-                          fontSize="11"
-                          fontFamily="JetBrains Mono, monospace"
-                          fontWeight="bold"
-                        >
-                          MBQ BUY ▲
-                        </text>
-
-                        {/* Dynamic TP / SL Level Lines (Pine Script lines 81-87) */}
-                        {showTPSL && (
-                          <g opacity="0.95">
-                            {/* Dotted Entry Line */}
-                            <line
-                              x1={x}
-                              y1={candleY + candleHeight / 2}
-                              x2={780}
-                              y2={candleY + candleHeight / 2}
-                              stroke="#00F0FF"
-                              strokeWidth="1.5"
-                              strokeDasharray="4 3"
-                            />
-                            <text x="710" y={candleY + candleHeight / 2 - 4} fill="#00F0FF" fontSize="9" fontFamily="monospace" fontWeight="bold">
-                              ENTRY
-                            </text>
-
-                            {/* TP 1 Line (1.5x) */}
-                            <line x1={x} y1={candleY - 30} x2={780} y2={candleY - 30} stroke="#10B981" strokeWidth="1.5" strokeDasharray="2 2" />
-                            <text x="700" y={candleY - 34} fill="#10B981" fontSize="9" fontFamily="monospace" fontWeight="bold">
-                              TP1 (1.5x) [HIT]
-                            </text>
-
-                            {/* TP 2 Line (2.8x) */}
-                            <line x1={x} y1={candleY - 65} x2={780} y2={candleY - 65} stroke="#10B981" strokeWidth="1.5" />
-                            <text x="700" y={candleY - 69} fill="#10B981" fontSize="9" fontFamily="monospace" fontWeight="bold">
-                              TP2 (2.8x) [HIT]
-                            </text>
-
-                            {/* TP 3 Line (4.5x) */}
-                            <line x1={x} y1={candleY - 110} x2={780} y2={candleY - 110} stroke="#10B981" strokeWidth="2" />
-                            <text x="700" y={candleY - 114} fill="#10B981" fontSize="9" fontFamily="monospace" fontWeight="bold">
-                              TP3 (4.5x) [HIT]
-                            </text>
-
-                            {/* Stop Loss Line (1.5x ATR) */}
-                            <line x1={x} y1={candleY + 60} x2={780} y2={candleY + 60} stroke="#EF4444" strokeWidth="1.5" />
-                            <text x="710" y={candleY + 56} fill="#EF4444" fontSize="9" fontFamily="monospace" fontWeight="bold">
-                              STOP LOSS
-                            </text>
-                          </g>
-                        )}
-                      </g>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-
-            {/* Bottom Status Bar */}
-            <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between text-[11px] font-mono text-slate-400 bg-[#05070E]/80 px-4 py-2 rounded-lg border border-white/5 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Barstate Confirmed (No Repaint)
-                </span>
-                <span className="hidden sm:inline text-slate-500">|</span>
-                <span className="hidden sm:inline">ATR Volatility: 14 Period</span>
-              </div>
-              <div className="text-cyan-400 font-semibold">
-                Setup R:R = 1:2.80 (Winner)
-              </div>
-            </div>
-
           </div>
 
-          {/* Bottom Interactive Feature Badges */}
-          <div className="bg-[#090D1A] p-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                <span>Cyan/Purple Momentum Ribbon</span>
+          {/* Bottom Specifications Bar */}
+          <div className="p-4 sm:p-6 bg-[#0E131F] border-t border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 w-full md:w-auto text-xs font-mono">
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">Engine Standard</span>
+                <span className="text-white font-semibold">Pine Script v5</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>Automatic 3-Tier Take Profit</span>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">Repaint Tolerance</span>
+                <span className="text-emerald-400 font-semibold">0.00% Guaranteed</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                <span>Dynamic ATR Trailing Stop</span>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">Exit Multipliers</span>
+                <span className="text-slate-200 font-semibold">1.5x / 2.8x / 4.5x ATR</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">Alert Execution</span>
+                <span className="text-white font-semibold">Webhook & Mobile Push</span>
               </div>
             </div>
 
             <button
               onClick={() => onOpenCheckout('Pro')}
-              className="px-5 py-2 text-xs font-bold text-black bg-gradient-to-r from-cyan-400 to-teal-300 hover:from-cyan-300 hover:to-teal-200 rounded-lg shadow-lg shadow-cyan-500/20 transition-all"
+              className="w-full md:w-auto px-6 py-3 rounded-xl bg-white hover:bg-slate-200 text-black font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-lg"
             >
-              Unlock This Script on TradingView →
+              <span>Get Indicator Access</span>
+              <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>
 

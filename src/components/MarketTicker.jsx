@@ -19,11 +19,11 @@ export default function MarketTicker() {
   const displayItems = [...tickerItems, ...tickerItems];
 
   return (
-    <div className="relative w-full overflow-hidden bg-[#070B16] border-y border-white/10 py-3 select-none">
+    <div className="relative w-full overflow-hidden bg-[#090C14] border-y border-slate-800/80 py-3 select-none">
       
       {/* Side gradient fades for seamless scrolling */}
-      <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#070B16] to-transparent z-10 pointer-events-none"></div>
-      <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#070B16] to-transparent z-10 pointer-events-none"></div>
+      <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#090C14] to-transparent z-10 pointer-events-none"></div>
+      <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#090C14] to-transparent z-10 pointer-events-none"></div>
 
       <div className="flex w-max animate-ticker hover:[animation-play-state:paused]">
         {displayItems.map((item, idx) => (

@@ -12,10 +12,14 @@ import PricingSection from './components/PricingSection';
 import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
 import CheckoutModal from './components/CheckoutModal';
+import AuthModal from './components/AuthModal';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export default function App() {
+function AppContent() {
+  const { isAuthenticated } = useAuth();
   const [checkoutModal, setCheckoutModal] = useState({ open: false, plan: 'Pro Quarterly' });
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
+  const [authModal, setAuthModal] = useState({ open: false, initialTab: 'login' });
 
   const handleOpenCheckout = (planName = 'Pro Quarterly') => {
     setCheckoutModal({ open: true, plan: planName });
@@ -26,11 +30,23 @@ export default function App() {
   };
 
   const handleOpenDashboard = () => {
-    setDashboardModalOpen(true);
+    if (isAuthenticated) {
+      setDashboardModalOpen(true);
+    } else {
+      setAuthModal({ open: true, initialTab: 'login' });
+    }
   };
 
   const handleCloseDashboard = () => {
     setDashboardModalOpen(false);
+  };
+
+  const handleOpenAuth = (tab = 'login') => {
+    setAuthModal({ open: true, initialTab: tab });
+  };
+
+  const handleCloseAuth = () => {
+    setAuthModal({ open: false, initialTab: 'login' });
   };
 
   return (
@@ -40,6 +56,7 @@ export default function App() {
       <Navbar
         onOpenCheckout={handleOpenCheckout}
         onOpenDashboard={handleOpenDashboard}
+        onOpenAuth={() => handleOpenAuth('login')}
       />
 
       {/* Main Content Sections */}
@@ -53,7 +70,7 @@ export default function App() {
         {/* 2. Auto-scrolling Market Ticker */}
         <MarketTicker />
 
-        {/* 3. Interactive Pine Script V5 Live Chart Simulator */}
+        {/* 3. Official TradingView Live Chart Simulator */}
         <LiveChartSimulator
           onOpenCheckout={handleOpenCheckout}
         />
@@ -69,9 +86,10 @@ export default function App() {
           onOpenCheckout={handleOpenCheckout}
         />
 
-        {/* 6. Customer Licensing Dashboard (The Core SwiftAlgo-Beating Differentiator) */}
+        {/* 6. Customer Licensing Dashboard (Dynamic real user account / portal showcase) */}
         <CustomerDashboard
           onOpenCheckout={handleOpenCheckout}
+          onOpenAuth={() => handleOpenAuth('login')}
         />
 
         {/* 7. Verified Reviews Wall */}
@@ -99,6 +117,7 @@ export default function App() {
       <Footer
         onOpenCheckout={handleOpenCheckout}
         onOpenDashboard={handleOpenDashboard}
+        onOpenAuth={() => handleOpenAuth('login')}
       />
 
       {/* Interactive Checkout Modal */}
@@ -110,14 +129,36 @@ export default function App() {
         />
       )}
 
-      {/* Standalone Dashboard Modal Preview */}
+      {/* Member Dashboard Modal View */}
       {dashboardModalOpen && (
         <CustomerDashboard
           isModal={true}
           onClose={handleCloseDashboard}
+          onOpenCheckout={handleOpenCheckout}
+          onOpenAuth={() => handleOpenAuth('login')}
+        />
+      )}
+
+      {/* Member Authentication Modal */}
+      {authModal.open && (
+        <AuthModal
+          isOpen={authModal.open}
+          initialTab={authModal.initialTab}
+          onClose={handleCloseAuth}
+          onAuthenticated={() => {
+            setDashboardModalOpen(true);
+          }}
         />
       )}
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
